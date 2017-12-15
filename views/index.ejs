@@ -26,7 +26,7 @@
     <pre>
       <code class="hljs" data-trim>
         class Contract < ActiveRecord::Base
-          ```
+          # ...
           before_save do
             self.send_to_for_dailer_at_first_time = false if leader_id_changed? && !leader_id_was.nil? && leader_id_was != creator_id
             self.sent_to_lawyer_at_first_time = false if lawyer_id_changed? && !lawyer_id_was.nil? && lawyer_id_was != creator_id
@@ -38,7 +38,7 @@
               self.search_attributes.merge!(surname: main_client[:surname])
             end
           end
-          ```
+          # ...
         end
       </code></pre>
   </section>
@@ -217,30 +217,23 @@
     <h3>Action Validators</h3>
   </section>
 
-
   <section>
-    <ul class="dashed">
-      <li>app
-        <ul>
-          <li>controllers</li>
-          <li>decorators</li>
-          <li>interactors</li>
-          <li>mailers</li>
-          <li>models</li>
-          <li>policies</li>
-          <li>queries</li>
-          <li>serializers</li>
-          <li>validators</li>
-        </ul>
-      </li> 
-      <li>bin</li>
-      <li>config</li>
-      <li>db</li> 
-      <li>log</li>
-      <li>spec</li>
-    </ul>
+    <pre><code>
+    ▾ app/
+      ▸ controllers/
+      ▸ decorators/
+      ▸ helpers/
+      ▸ interactors/
+      ▸ mailers/
+      ▸ models/
+      ▸ policies/
+      ▸ queries/
+      ▸ serializers/
+      ▾ validators/
+        ▾ contracts/
+          create_validator.rb
+    </code></pre>
   </section>
-  
 
   <section>
     <h4>Same single-purpose object</h4>
