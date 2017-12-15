@@ -206,6 +206,33 @@
       end
     </code></pre>
   </section>
+
+  <section>
+    <small>invalid request for client</small>
+      <pre><code class="hljs" data-trim>
+        {
+          "errors": [
+            "Email can't be blank",
+            "Phone can't be blank",
+            "Name can't be blank"
+          ]
+        }
+      </code></pre>
+  </section>
+
+  <section>
+    <small>invalid request for contract</small>
+      <pre><code class="hljs" data-trim>
+        {
+          "errors": [
+            "Address can't be blank",
+            "Price is not a number",
+            "Percent must be in percents",
+            "Status is not included in the list"
+          ]
+        }
+      </code></pre>
+  </section>
 </section>
 
 <section>
@@ -218,6 +245,7 @@
   </section>
 
   <section>
+    <small>Validators in application directory</small>
     <pre><code>
     ▾ app/
       ▸ controllers/
@@ -369,21 +397,37 @@
     </code></pre>
   </section>
 
+  <section>
+    <small>invalid request for client and contract</small>
+      <pre><code class="hljs" data-trim>
+        {
+          "errors": {
+            "client": [
+              "Client name is blank",
+              "Client email is blank",
+              "Client phone is blank"
+            ],
+            "contract": [
+              "Contract price is invalid",
+              "Contract percent is invalid",
+              "Contract address is blank"
+            ]
+          }
+        }
+      </code></pre>
+  </section>
 </section>
-
 
 <section>
   <h3>workshop</h3>
     <small>
-    <a target="_blank" href="https://action-validators.herokuapp.com">action-validators.herokuapp.com</a> <br />
-
-  </small>
+      <a target="_blank" href="https://action-validators-example.herokuapp.com">action-validators-example.herokuapp.com</a><br />
+    </small>
 </section>
 
 <section>
   <h3>Questions?</h3>
 </section>
-
 
 <section>
   <h3>Thank you!</h3>
