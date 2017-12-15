@@ -1,0 +1,26 @@
+{
+  "name": "action-validators-present",
+  "version": "1.0.0",
+  "main": "app.js",
+  "description": "Action Validators Presentation",
+  "homepage": "https://action-validators-present.herokuapp.com",
+  "scripts": {
+    "start": "node app"
+  },
+  "author": {
+    "name": "Viktor Tsepliaiev",
+    "email": "tsipa88@gmail.com",
+    "web": "https://github.com/tsipa88"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:tsipa88/action-validators-present.git"
+  },
+  "dependencies": {
+    "ejs": "^2.5.7",
+    "express": "~4.14.0",
+    "express-ejs-layouts": "^2.3.1",
+    "glob": "^7.1.2"
+  },
+  "license": "MIT"
+}

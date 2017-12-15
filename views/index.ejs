@@ -1,0 +1,397 @@
+<section>
+  
+  <h1>Action Validators</h1>
+  <h4>where and when</h4>
+  <small>
+    Speaker: Viktor Tsepliaiev <br />
+    email: tsipa88@gmail.com <br />
+    github: <a target="_blank" href="https://github.com/tsipa88/action-validators-present">tsipa88/action-validators-present</a> <br />
+    example: <a target="_blank" href="https://github.com/tsipa88/action-validators-example">tsipa88/action-validators</a>
+  </small>
+</section>
+
+<section>
+  <h4>The problem (V1)</h4>
+
+  <section>
+    <img src="img/problem.jpg" />
+  </section>
+
+  <section>
+    <img src="img/fatmodels.jpg" />
+    <h5>Fat models</h5>
+  </section>
+
+  <section>
+    <pre>
+      <code class="hljs" data-trim>
+        class Contract < ActiveRecord::Base
+          ```
+          before_save do
+            self.send_to_for_dailer_at_first_time = false if leader_id_changed? && !leader_id_was.nil? && leader_id_was != creator_id
+            self.sent_to_lawyer_at_first_time = false if lawyer_id_changed? && !lawyer_id_was.nil? && lawyer_id_was != creator_id
+            if status_changed? && !status_was.nil?
+              self.last_events_prepared = nil
+            end
+            self.search_attributes = (self.search_attributes.to_h || {}).deep_symbolize_keys
+            if main_client && self.new_record?
+              self.search_attributes.merge!(surname: main_client[:surname])
+            end
+          end
+          ```
+        end
+      </code></pre>
+  </section>
+
+  <section>
+    <img src="img/fatcontrollers.jpg" />
+    <h5>Fat controllers</h5>
+  </section>
+
+  <section>
+    <pre>
+      <code class="hljs" data-trim>
+        class ContractsController < ApplicationController
+          def create
+            @contract = Contract.new(create_contract_params)
+            @contract.creator = current_user
+            @contract.valid?
+            @contract.errors.add(:state_id, 'should be selected from list.') unless is_valid_state
+            if current_user.lawyer?
+              @contract.errors.add(:client_id, 'invalid') if @contract.client_id.try(:zero?)
+              @contract.lawyer = current_user if @contract.lawyer.blank? && @action != 'to_mems'
+            end
+            if current_user.lawyer? && params[:enable_sent_to_client].present?
+              @contract.errors.add(:agent_id, %q|invalid|) if @contract.agent_id.try(:zero?)
+              @contract.errors.add(:agent_id, %q|can't be blank|) unless @contract.agent_id.present?
+            end
+            render redirect_to_js_path(@contract)
+          end
+        end
+      </code></pre>
+  
+  </section>
+
+  <section>
+    <pre>
+      <code class="hljs" data-trim>
+        module ClassMethods
+          def task(name, options = {})
+            namespace = options[:namespace] ? "#{options[:namespace]}_" : ''
+            class_eval do
+              after_save do |object|
+                object.send("#{namespace}#{name}_task_refresh") if object.send("#{options[:field] || name}_changed?") || options[:refresh].try(:call, object)
+              end
+            end
+            define_method "#{namespace}#{name}_task" do
+              self.tasks.where(task_type: options[:type] || name, user_id: get_user_id(options)).first_or_initialize
+            end
+            define_method "#{namespace}#{name}_task_refresh" do
+              date = self.send(options[:field] || name)
+              if date.nil? || options[:delete].try(:call, self)
+                self.send("#{namespace}#{name}_task").update(
+                  task_type: options[:type] || name,
+                  start_at: date,
+                  title: options[:title] || name.to_s.humanize,
+                  description: options[:description] || '',
+                  finished_at: options[:finished_at].try(:call, self) || options[:finished_at]
+                )
+              end
+            end
+          end
+        end
+      </code></pre>
+    <h5>Horse dose of meta-programing</h5>
+  </section>
+
+  <section>
+    <img src="img/business_logic.png" />
+    <h5>Business logic</h5>
+  </section>
+</section>
+
+<section>
+  <section>
+    <h3>Solve (V2)</h3>
+  </section>
+
+  <section>
+    <h3>Service objects</h3>
+  </section>
+
+  <section>
+    <h3>Interactor</h3>
+
+    <pre><code class="hljs" data-trim>
+      gem 'interactor'
+    </code></pre>
+  </section>
+
+  <section>
+    <small>deal with context</small>
+    <pre><code class="hljs" data-trim>
+      context.user = user
+    </code></pre>
+    
+    <pre><code class="hljs" data-trim>
+     context.fail!
+    </code></pre>
+    
+    <pre><code class="hljs" data-trim>
+     context.failure? # => false
+     context.fail!
+     context.failure? # => true
+    </code></pre>
+  </section>
+
+  <section>
+    <h4>Example using</h4>
+    <pre><code class="hljs" data-trim>
+      class Create
+        include Interactor
+        delegate :client, :contract, :client_params, :contract_params, to: :context
+
+        def call
+          process_client
+          process_contract 
+        end
+
+        protected
+
+        def process_client
+          client = Client.new(client_params)
+          
+          return if client.save
+          context.fail!(error: client.errors.full_messages)
+        end
+
+        def process_contract
+          contract = Contract.new(contract_params)
+          contract.client = client
+          
+          return if contract.save
+          context.fail!(error: 'Error creating contract')
+        end
+      end   
+    </code></pre>
+  </section>
+
+  <section>
+    <h4>in controller</h4>
+    <pre><code class="hljs" data-trim>
+      class ContractsController < Api::ApplicationController
+        def create
+          result = Contracts::Create.call(base_params)
+
+          if result.success?
+            render status: 200, json: { message: 'Successfully created' }
+          else  
+            render status: 422, json: { errors: result.error } 
+          end
+        end
+
+        private
+
+        def contract_params
+          params.permit(:address, :price, :percent, :status)
+        end
+
+        def client_params
+          params.permit(:email, :phone, :name)
+        end
+
+        def base_params
+          { contract_params: contract_params, client_params: client_params }
+        end
+      end
+    </code></pre>
+  </section>
+</section>
+
+<section>
+  <section>
+    <h3>Solve (V3)</h3>
+  </section>
+
+  <section>
+    <h3>Action Validators</h3>
+  </section>
+
+
+  <section>
+    <ul class="dashed">
+      <li>app
+        <ul>
+          <li>controllers</li>
+          <li>decorators</li>
+          <li>interactors</li>
+          <li>mailers</li>
+          <li>models</li>
+          <li>policies</li>
+          <li>queries</li>
+          <li>serializers</li>
+          <li>validators</li>
+        </ul>
+      </li> 
+      <li>bin</li>
+      <li>config</li>
+      <li>db</li> 
+      <li>log</li>
+      <li>spec</li>
+    </ul>
+  </section>
+  
+
+  <section>
+    <h4>Same single-purpose object</h4>
+    <small>including ActiveModel::Model</small>
+    <pre><code class="hljs" data-trim>
+      class CreateValidator
+        include ActiveModel::Model
+        attr_accessor :contract_params, :client_params, :client, :contract
+
+        validate :client_name
+        validate :client_email
+        validate :client_phone
+        validate :contract_price
+        validate :contract_percent
+        validate :contract_address
+
+        private
+
+        def client_name
+          return if client_params[:name].present?
+          errors.add(:client, 'Client name is blank')
+        end
+
+        def client_email
+          return if client_params[:email].present?
+          errors.add(:client, 'Client email is blank')
+        end
+
+        def client_phone
+          return if client_params[:phone].present?
+          errors.add(:client, 'Client phone is blank')
+        end
+
+        def contract_price
+          return if contract_params[:price].to_i.positive?
+          errors.add(:contract, 'Contract price is invalid')
+        end
+
+        def contract_percent
+          return if contract_params[:percent].to_i.in?(1..100)
+          errors.add(:contract, 'Contract percent is invalid')
+        end
+
+        def contract_address
+          return if contract_params[:address].present?
+          errors.add(:contract, 'Contract address is blank')
+        end
+
+        def contract_status
+          return if contract_params[:status].in?(%w[new pending])
+          errors.add(:contract, 'Contract status is invalid')
+        end
+      end
+    </code></pre>
+  </section>
+
+  <section>
+    <h4>or with inheritance</h4>
+    <pre><code class="hljs" data-trim>
+      class CreateValidator < BaseValidator
+        validate :client_name
+        validate :client_email
+        validate :client_phone
+        validate :contract_price
+        validate :contract_percent
+        validate :contract_address
+      end
+    </code></pre>
+  </section>
+
+  <section>
+    <h4>in controller</h4>
+    <pre><code class="hljs" data-trim>
+      class ContractsController < Api::ApplicationController
+        def create
+          validator = Contracts::CreateValidator.new(base_params)
+
+          if validator.valid?
+            result = Contracts::Create.call(base_params)
+            
+            render status: 200, json: { message: 'Successfully created' }
+          else
+            render status: 422, json: { errors: validator.errors }  
+          end
+        end
+
+        private
+
+        def contract_params
+          params.permit(:address, :price, :percent, :status)
+        end
+
+        def client_params
+          params.permit(:email, :phone, :name)
+        end
+
+        def base_params
+          { contract_params: contract_params, client_params: client_params }
+        end
+      end
+    </code></pre>
+  </section>
+
+  <section>
+    <h4>And the interactor</h4>
+    <pre><code class="hljs" data-trim>
+      class Create
+        include Interactor
+        delegate :client, :contract, :client_params, :contract_params, to: :context
+
+        def call
+          ActiveRecord::Base.transaction do
+            process_client
+            process_contract
+            process_notes
+            process_messages
+          end
+        end
+
+        protected
+
+        def process_client
+          client = Client.new(client_params)
+          client.save
+        end
+
+        def process_contract
+          contract = Contract.new(contract_params)
+          contract.client = client
+          contract.save
+        end
+      end
+    </code></pre>
+  </section>
+
+</section>
+
+
+<section>
+  <h3>workshop</h3>
+    <small>
+    <a target="_blank" href="https://action-validators.herokuapp.com">action-validators.herokuapp.com</a> <br />
+
+  </small>
+</section>
+
+<section>
+  <h3>Questions?</h3>
+</section>
+
+
+<section>
+  <h3>Thank you!</h3>
+</section>
