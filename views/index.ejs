@@ -340,7 +340,7 @@
           validator = Contracts::CreateValidator.new(base_params)
 
           if validator.valid?
-            result = Contracts::Create.call(base_params)
+            Contracts::Create.call(base_params)
             
             render status: 200, json: { message: 'Successfully created' }
           else
